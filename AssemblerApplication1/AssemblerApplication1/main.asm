@@ -5,8 +5,4 @@
 ; Author : Dima
 ;
 
-
-; Replace with your application code
-start:
-    inc r16
-    rjmp start
+ldi r16 , 1
