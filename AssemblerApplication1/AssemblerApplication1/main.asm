@@ -13,8 +13,13 @@
 		out		sph, r17
 		ldi		r17, low(ramend)
 		out		spl, r17            
-		call	port_setup
 
+		ldi		r16, 0x00          ;r16=00000000
+		out		ddrb, r16          ;make port b input port      
+		ldi		r16, 0xff
+		out		ddrd, r16          ;make port d output port
+		ldi		r16, 0xff
+		out		portd, r16
 ;main:
 main:
 stage1:									;stage1 lights up one after one leds 7,0 and 2               
@@ -37,18 +42,94 @@ stage1:									;stage1 lights up one after one leds 7,0 and 2
 		call	delay
 		out		portd,r30        ;turn of the led turned on by previos step
 
+		ldi		r19, 0xff
+		out		portd, r19
 
-;setting led and switches to port d and b 
-port_setup:
+		in		r31, pinb		;put in r31 whatever is in port b
+loopinput1:
+		in		r19, pinb		;put in r19 what comes from port b.if no switch is pressed r19=r31 and stays
+		cp		r19,r31			;in the loop.  If a switch is pressed r19 stores the value and the program
+		brne	compare1		;jumps to compare1
+		jmp		loopinput1		  		  		 		
+compare1:
+		cp		r19, r16		;check if r16=r19. it compares the first value that was outputed in stage1 with the first input
+		brne	fail			;if not equal jump to fails
+		out		portd, r16		;if equal jump to waitForInput2 and waits for the second input
+		call	delay
+		jmp		waitForInput2
+waitForInput2:
+		in		r31, pinb 
+loopinput2:
+		in		r19, pinb 
+		cp		r19, r31
+		brne	compare2
+		jmp		loopinput2  		 		
+compare2:
+		cp		r19, r17           
+		brne	fail
+		out		portd,r17
+		call	delay
+		jmp		waitForInput3
+waitForInput3:
+		in		r31,pinb 
+loopinput3:
+		in		r19, pinb 
+		cp		r19, r31
+		brne	compare3
+		jmp		loopinput3  		 		
+compare3:
+		cp		r19, r18           ;check if r19=r18
+		brne	fail             ;if not equal jump to fail
+		out		portd,r18
+		call	delay
+		jmp		waitForInput4
+waitForInput4:
+		in		r31, pinb
+loopinput4:
+		in		r19, pinb
+		cp		r19, r31
+		brne	compare4
+		jmp		loopinput4
+compare4:
+		cp		r19, r25
+		brne	fail                  
+		out		portd, r25
+		call	delay
+		jmp		win   
+repeat:	
+		out		portd, r29    
+		call	delay
+		com		r29
+		dec		r28
+		brne	repeat
+		
+		in r31,pinb 
+restartGame:  
+		in		r19,pinb 
+		cp		r19,r31
+		brne	fail
+		jmp		restartGame
+;fail notification
+fail:
 		push	r16
-		ldi		r16, 0x00          ;r16=00000000
-		out		ddrb, r16          ;make port b input port      
-		ldi		r16, 0xff
-		out		ddrd, r16          ;make port d output port
-		ldi		r16, 0xff
-		out		portd, r16
+		push	r19
+		ldi		r16, 0
+		ldi		r19, 8
+fail_for_loop:
+		push	r16
+		call	light_on
+		call	delay
 		pop		r16
-		ret
+		inc		r16
+		cp		r16, r19 
+		brlo	fail_for_loop
+		pop		r19
+		pop		r16
+		rjmp	stage1
+
+;compare the input and the from a specific register
+
+
 ; falshes all the lights 3 times to notify the user 
 ; that he won the game
 win:
@@ -81,25 +162,6 @@ light_all_on:
 		call	delay			; make a delay of 1 second
 		pop		r16
 		ret
-
-;fail notification
-fail:
-		push	r16
-		push	r19
-		ldi		r16, 0
-		ldi		r19, 8
-fail_for_loop:
-		push	r16
-		call	light_on
-		call	delay
-		pop		r16
-		inc		r16
-		cp		r16, r19 
-		brlo	fail_for_loop
-		pop		r19
-		pop		r16
-		ret
-
 ;turn on a single light without changing the state
 ; of other lights
 ;param: light number (between 0 and 7)
