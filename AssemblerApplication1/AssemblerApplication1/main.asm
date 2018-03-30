@@ -23,79 +23,74 @@
 ;main:
 main:
 stage1:									;stage1 lights up one after one leds 7,0 and 2               
-		ldi		r16, 128           ;r16=128
-		com		r16               ;invert r16/stk600 board takes 0's as 1 and 1's as 0
-		call	delay            ; wait 1 second before jump to next command 
-		out		portd,r16         ;send r16 to port d
-		call	delay            
-		ldi		r17,1             
+		ldi		r19, 128           ;r16=128
+		com		r19
+		ldi		r17,1
 		com		r17
-		out		portd,r17
-		call	delay
-		ldi		r18,16
-		com		r18
-		out		portd,r18
-		call	delay
+		ldi		r21,16  
+		com		r21           
 		ldi		r25,4
 		com		r25
-		out		portd,r25
-		call	delay
-		out		portd,r30        ;turn of the led turned on by previos step
 
-		ldi		r19, 0xff
-		out		portd, r19
+		mov		r16, r19
+		call	light_value
+		mov		r16, r17
+		call	light_value
+		mov		r16, r21
+		call	light_value
+		mov		r16, r25
+		call	light_value
 
-		in		r31, pinb		;put in r31 whatever is in port b
-loopinput1:
-		in		r19, pinb		;put in r19 what comes from port b.if no switch is pressed r19=r31 and stays
-		cp		r19,r31			;in the loop.  If a switch is pressed r19 stores the value and the program
-		brne	compare1		;jumps to compare1
-		jmp		loopinput1		  		  		 		
-compare1:
-		cp		r19, r16		;check if r16=r19. it compares the first value that was outputed in stage1 with the first input
-		brne	fail			;if not equal jump to fails
-		out		portd, r16		;if equal jump to waitForInput2 and waits for the second input
-		call	delay
-		jmp		waitForInput2
-waitForInput2:
-		in		r31, pinb 
-loopinput2:
-		in		r19, pinb 
-		cp		r19, r31
-		brne	compare2
-		jmp		loopinput2  		 		
-compare2:
-		cp		r19, r17           
-		brne	fail
-		out		portd,r17
-		call	delay
-		jmp		waitForInput3
-waitForInput3:
-		in		r31,pinb 
-loopinput3:
-		in		r19, pinb 
-		cp		r19, r31
-		brne	compare3
-		jmp		loopinput3  		 		
-compare3:
-		cp		r19, r18           ;check if r19=r18
-		brne	fail             ;if not equal jump to fail
-		out		portd,r18
-		call	delay
-		jmp		waitForInput4
-waitForInput4:
-		in		r31, pinb
-loopinput4:
-		in		r19, pinb
-		cp		r19, r31
-		brne	compare4
-		jmp		loopinput4
-compare4:
-		cp		r19, r25
-		brne	fail                  
-		out		portd, r25
-		call	delay
-		jmp		win   
+		ldi		r30, 0xff
+		out		portd, r30       ;turn of the led turned on by previos step
+
+		mov		r18, r19
+		call	compareInput
+		mov		r18, r17
+		call	compareInput
+		mov		r18, r21
+		call	compareInput
+		mov		r18, r25
+		call	compareInput
+		call	win
+stage2:									;stage1 lights up one after one leds 7,0 and 2               
+		ldi		r19, 16           ;r16=128
+		com		r19
+		ldi		r17,2
+		com		r17
+		ldi		r21,64  
+		com		r21           
+		ldi		r25,128
+		com		r25
+		ldi		r26, 1
+		com		r26
+
+		mov		r16, r19
+		call	light_value
+		mov		r16, r17
+		call	light_value
+		mov		r16, r21
+		call	light_value
+		mov		r16, r25
+		call	light_value
+		mov		r16, r26
+		call	light_value
+
+		ldi		r30, 0xff
+		out		portd, r30       ;turn of the led turned on by previos step
+
+		mov		r18, r19
+		call	compareInput
+		mov		r18, r17
+		call	compareInput
+		mov		r18, r21
+		call	compareInput
+		mov		r18, r25
+		call	compareInput
+		mov		r18, r26
+		call	compareInput
+		call	win
+		rjmp	stage1
 repeat:	
 		out		portd, r29    
 		call	delay
@@ -128,8 +123,19 @@ fail_for_loop:
 		rjmp	stage1
 
 ;compare the input and the from a specific register
-
-
+compareInput:
+		in		r31,pinb 
+loopinput:
+		in		r19, pinb 
+		cp		r19, r31
+		brne	compare
+		jmp		loopinput  		 		
+compare:
+		cp		r19, r18           ;check if r19=r18
+		brne	fail				;if not equal jump to fail
+		out		portd,r18
+		call	delay
+		ret
 ; falshes all the lights 3 times to notify the user 
 ; that he won the game
 win:
@@ -189,7 +195,10 @@ light_on_shift_done:
 		pop		r18
 		pop		r17
 		ret
-
+light_value:
+		out		portd,r16         ;send r16 to port d
+		call	delay            ; wait 1 second before jump to next command 
+		ret
 ;one second delay
 ;example is from the book
 delay:
