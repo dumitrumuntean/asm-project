@@ -8,6 +8,8 @@
 .INCLUDE "M2560DEF.INC"
 .org 00
 
+
+	
 ;initialize stack pointer
 		ldi		r17, high(ramend)
 		out		sph, r17
@@ -22,6 +24,7 @@
 		out		portd, r16
 ;main:
 main:
+		call	startGamePattern
 stage1:									;stage1 lights up one after one leds 7,0 and 2               
 		ldi		r19, 128           ;r16=128
 		com		r19
@@ -76,8 +79,7 @@ stage2:									;stage1 lights up one after one leds 7,0 and 2
 		mov		r16, r26
 		call	light_value
 
-		ldi		r30, 0xff
-		out		portd, r30       ;turn of the led turned on by previos step
+		call	clearDisplay   ; clear display
 
 		mov		r18, r19
 		call	compareInput
@@ -90,7 +92,7 @@ stage2:									;stage1 lights up one after one leds 7,0 and 2
 		mov		r18, r26
 		call	compareInput
 		call	win
-		rjmp	stage1
+		rjmp	main
 repeat:	
 		out		portd, r29    
 		call	delay
@@ -148,7 +150,26 @@ win_for_loop:
 		brne	win_for_loop		; if it is bigger than 0(zero) start again
 		pop		r17
 		ret
-
+;a sequance of flashes to notify the user that game starts
+startGamePattern:
+		push	r16
+		push	r31
+		in		r31,pinb 
+		ldi		r16, 0b10101010
+startloopinput:
+		com		r16
+		call	light_value
+		in		r19, pinb 
+		cp		r19, r31
+		brne	breakfunction
+		jmp		startloopinput
+breakfunction:
+		pop		r31
+		pop		r16
+		call	clearDisplay
+		call	delay
+		ret
+	
 ;turn off all the lights
 light_all_off:
 		push	r16
@@ -159,6 +180,13 @@ light_all_off:
 		pop		r16
 		ret
 
+;a subroutine used to clear up the display
+clearDisplay:
+	push	r16
+	ldi		r16, 0xff
+	call	light_value
+	pop		r16
+	ret
 ;turn on all the lights
 light_all_on:
 		push	r16
