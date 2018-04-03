@@ -21,7 +21,6 @@
 		call	array_setup				;filling up array banck with values (1,2,4,8,16,32,64,128)
 		ldi		yl, low(array_bank)     ; 0x00
 		ldi		yh, high(array_bank)    ; 0x02
-
 main:
 		call	clearDisplay
 		call	startGamePattern
