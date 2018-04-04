@@ -7,9 +7,14 @@
 
 .INCLUDE "M2560DEF.INC"
 .org 00
+;the list of variables used 
+		.equ    LEVELS					= 10`;							; total number of levels; can be changed any time
+		.equ	array_bank				= 0x200							; bellow is IO portion, array containing all the possible output values
+		.equ	array_sequence			= 0x210							; array where the sequence is stored
+		.equ	array_bank_max_offset	= 7								; the size of the array_bank	
+		.equ	start_level				= 1							; level to start with
+		.equ	running_level			= LEVELS + start_level		; running level
 
-
-	
 ;initialize stack pointer
 		ldi		r17, high(ramend)
 		out		sph, r17
@@ -22,91 +27,91 @@
 		out		ddrd, r16          ;make port d output port
 		ldi		r16, 0xff
 		out		portd, r16
-;main:
+
+		call	array_setup				;filling up array banck with values (1,2,4,8,16,32,64,128)
+	
+		ldi		yl, low(array_bank)     ; 0x00
+		ldi		yh, high(array_bank)    ; 0x02
+;main function
 main:
-		call	startGamePattern
-stage1:									;stage1 lights up one after one leds 7,0 and 2               
-		ldi		r19, 128           ;r16=128
-		com		r19
-		ldi		r17,1
-		com		r17
-		ldi		r21,16  
-		com		r21           
-		ldi		r25,4
-		com		r25
-
-		mov		r16, r19
-		call	light_value
-		mov		r16, r17
-		call	light_value
-		mov		r16, r21
-		call	light_value
-		mov		r16, r25
-		call	light_value
-
-		ldi		r30, 0xff
-		out		portd, r30       ;turn of the led turned on by previos step
-
-		mov		r18, r19
-		call	compareInput
-		mov		r18, r17
-		call	compareInput
-		mov		r18, r21
-		call	compareInput
-		mov		r18, r25
-		call	compareInput
-		call	win
-stage2:									;stage1 lights up one after one leds 7,0 and 2               
-		ldi		r19, 16           ;r16=128
-		com		r19
-		ldi		r17,2
-		com		r17
-		ldi		r21,64  
-		com		r21           
-		ldi		r25,128
-		com		r25
-		ldi		r26, 1
-		com		r26
-
-		mov		r16, r19
-		call	light_value
-		mov		r16, r17
-		call	light_value
-		mov		r16, r21
-		call	light_value
-		mov		r16, r25
-		call	light_value
-		mov		r16, r26
-		call	light_value
-
-		call	clearDisplay   ; clear display
-
-		mov		r18, r19
-		call	compareInput
-		mov		r18, r17
-		call	compareInput
-		mov		r18, r21
-		call	compareInput
-		mov		r18, r25
-		call	compareInput
-		mov		r18, r26
-		call	compareInput
-		call	win
-		rjmp	main
-repeat:	
-		out		portd, r29    
-		call	delay
-		com		r29
-		dec		r28
-		brne	repeat
+		call	clearDisplay
+		call	startGamePattern				
+		ldi		r20, LEVELS;
+		ldi		r17, 0							;current offset
+		ldi		r24, array_bank_max_offset
+;main loop
+gameMainLoop:
+		ldi		r21, running_level;
+		sub		r21, r20
 		
-		in r31,pinb 
-restartGame:  
-		in		r19,pinb 
-		cp		r19,r31
-		brne	fail
-		jmp		restartGame
-;fail notification
+		ldi		xl, low(array_sequence)      ; 0x10
+		ldi		xh, high(array_sequence)     ; 0x02
+;display sequence
+displaySequenceLoop:
+		
+		ld		r16, y+
+		com		r16
+		st		x+, r16
+		call	light_value
+		call	clearDisplay
+		inc		r17
+		cp		r24, r17
+		brne	next	
+		call	reset      
+next:
+		dec		r21
+		brne	displaySequenceLoop
+
+		ldi		r21, running_level;
+		sub		r21, r20
+
+		ldi		xl, low(array_sequence)     ; 0x00
+		ldi		xh, high(array_sequence)    ; 0x02
+
+;comparing input
+compareInputLoop:
+		ld		r18, x+
+		call	compareInput
+		dec		r21
+		brne	compareInputLoop
+		call	clearDisplay
+		call	win
+		dec		r20
+		brne	gameMainLoop
+		
+		rjmp	main
+
+;reseting the pointer of the array bank
+reset:
+		ldi		r17, 0					 ; current offset = 0s
+		ldi		yl, low(array_bank)      ; 0x00
+		ldi		yh, high(array_bank)     ; 0x02
+		ret
+;used to fill up the array of values in a 'random' way
+array_setup:
+		push	r16
+		ldi		xl, low(array_bank)      ; 0x00
+		ldi		xh, high(array_bank)     ; 0x02
+		clr		r16
+		ldi		r16, 16
+		st		x+, r16
+		ldi		r16, 1
+		st		x+, r16
+		ldi		r16, 32
+		st		x+, r16
+		ldi		r16, 64
+		st		x+, r16
+		ldi		r16, 8
+		st		x+, r16
+		ldi		r16, 2
+		st		x+, r16
+		ldi		r16, 4
+		st		x+, r16
+		ldi		r16, 128
+		st		x+, r16
+		pop		r16
+		ret
+;fail notification - lightining all the lights from right to left one by one
 fail:
 		push	r16
 		push	r19
@@ -122,7 +127,7 @@ fail_for_loop:
 		brlo	fail_for_loop
 		pop		r19
 		pop		r16
-		rjmp	stage1
+		rjmp	main		
 
 ;compare the input and the from a specific register
 compareInput:
@@ -155,7 +160,7 @@ startGamePattern:
 		push	r16
 		push	r31
 		in		r31,pinb 
-		ldi		r16, 0b10101010
+		ldi		r16, 0b01010101
 startloopinput:
 		com		r16
 		call	light_value
@@ -182,11 +187,11 @@ light_all_off:
 
 ;a subroutine used to clear up the display
 clearDisplay:
-	push	r16
-	ldi		r16, 0xff
-	call	light_value
-	pop		r16
-	ret
+		push	r16
+		ldi		r16, 0xff
+		call	light_value
+		pop		r16
+		ret
 ;turn on all the lights
 light_all_on:
 		push	r16
@@ -251,3 +256,6 @@ L3:
 		pop		r21
 		pop		r20
 		ret 
+
+;-------------------------------------------------------------
+
