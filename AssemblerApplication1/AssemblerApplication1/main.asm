@@ -12,9 +12,10 @@
 		.equ	array_bank				= 0x200							; bellow is IO portion, array containing all the possible output values
 		.equ	array_sequence			= 0x210							; array where the sequence is stored
 		.equ	array_bank_max_offset	= 7								; the size of the array_bank	
-		.equ	start_level				= 1							; level to start with
-		.equ	running_level			= LEVELS + start_level		; running level
+		.equ	start_level				= 1								; level to start with
+		.equ	running_level			= LEVELS + start_level			; running level
 
+main:
 ;initialize stack pointer
 		ldi		r17, high(ramend)
 		out		sph, r17
@@ -32,13 +33,17 @@
 	
 		ldi		yl, low(array_bank)     ; 0x00
 		ldi		yh, high(array_bank)    ; 0x02
+
 ;main function
-main:
+
 		call	clearDisplay
 		call	startGamePattern				
 		ldi		r20, LEVELS;
 		ldi		r17, 0							;current offset
 		ldi		r24, array_bank_max_offset
+
+		ldi		xl, low(array_sequence)      ; 0x10
+		ldi		xh, high(array_sequence)     ; 0x02
 ;main loop
 gameMainLoop:
 		ldi		r21, running_level;
@@ -55,7 +60,7 @@ displaySequenceLoop:
 		call	light_value
 		call	clearDisplay
 		inc		r17
-		cp		r24, r17
+		cp		r24, r17   ; current offset = max offset
 		brne	next	
 		call	reset      
 next:
@@ -127,7 +132,7 @@ fail_for_loop:
 		brlo	fail_for_loop
 		pop		r19
 		pop		r16
-		rjmp	main		
+		jmp		main	
 
 ;compare the input and the from a specific register
 compareInput:
